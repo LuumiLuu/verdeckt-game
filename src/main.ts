@@ -4,9 +4,7 @@ import type { DataConnection } from 'peerjs';
 import { wordPairs, type WordPair } from './data/wordpairs';
 
 window.addEventListener('DOMContentLoaded', () => {
-  const copyLinkBtn  = document.getElementById('copy-link-btn')!  as HTMLButtonElement;
-
-  // ─── Helpers ──────────────────────────────────────────────────────────
+  // ─── Helpers ────────────────────────────────────────────────
   function getParam(name: string): string | null {
     return new URLSearchParams(window.location.search).get(name);
   }
@@ -15,42 +13,59 @@ window.addEventListener('DOMContentLoaded', () => {
     return typeof d === 'object' && d !== null && 'type' in d;
   }
 
-  function formatTime(sec: number) {
+  function formatTime(sec: number): string {
     const m = String(Math.floor(sec / 60)).padStart(2, '0');
     const s = String(sec % 60).padStart(2, '0');
     return `${m}:${s}`;
   }
 
-  // ─── DOM Elements ─────────────────────────────────────────────────────
-  const stepRole       = document.getElementById('step-role')!          as HTMLDivElement;
-  const chooseHostBtn  = document.getElementById('choose-host')!       as HTMLButtonElement;
-  const chooseJoinBtn  = document.getElementById('choose-join')!       as HTMLButtonElement;
+  function copyToClipboard(text: string): Promise<void> {
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    // Fallback für HTTP
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    return Promise.resolve();
+  }
 
-  const stepName       = document.getElementById('step-name')!          as HTMLDivElement;
-  const chosenRoleText = document.getElementById('chosen-role-text')!   as HTMLParagraphElement;
-  const nameInput      = document.getElementById('player-name-input')!  as HTMLInputElement;
-  const submitNameBtn  = document.getElementById('submit-name')!       as HTMLButtonElement;
+  // ─── DOM Elements ──────────────────────────────────────────────
+  const stepRole      = document.getElementById('step-role')!          as HTMLDivElement;
+  const chooseHostBtn = document.getElementById('choose-host')!       as HTMLButtonElement;
+  const chooseJoinBtn = document.getElementById('choose-join')!       as HTMLButtonElement;
 
-  const hostLobby      = document.getElementById('host-lobby')!         as HTMLDivElement;
-  const hostIdSpan     = document.getElementById('host-peer-id')!       as HTMLSpanElement;
-  const hostListEl     = document.getElementById('player-list-host')!   as HTMLUListElement;
-  const startGameBtn   = document.getElementById('start-game-btn')!     as HTMLButtonElement;
+  const stepName       = document.getElementById('step-name')!         as HTMLDivElement;
+  const chosenRoleText = document.getElementById('chosen-role-text')!  as HTMLParagraphElement;
+  const nameInput      = document.getElementById('player-name-input')! as HTMLInputElement;
+  const submitNameBtn  = document.getElementById('submit-name')!      as HTMLButtonElement;
+
+  const hostLobby      = document.getElementById('host-lobby')!        as HTMLDivElement;
+  const hostIdSpan     = document.getElementById('host-peer-id')!      as HTMLSpanElement;
+  const copyLinkBtn    = document.getElementById('copy-link-btn')!     as HTMLButtonElement;
+  const hostListEl     = document.getElementById('player-list-host')!  as HTMLUListElement;
+  const startGameBtn   = document.getElementById('start-game-btn')!    as HTMLButtonElement;
   const startPlayerEl  = document.getElementById('start-player-display')! as HTMLParagraphElement;
 
-  const joinLobby      = document.getElementById('join-lobby')!         as HTMLDivElement;
-  const peerIdInput    = document.getElementById('peer-id-input')!      as HTMLInputElement;
-  const joinBtn        = document.getElementById('join-btn')!           as HTMLButtonElement;
-  const joinListEl     = document.getElementById('player-list-join')!   as HTMLUListElement;
+  const joinLobby   = document.getElementById('join-lobby')!        as HTMLDivElement;
+  const peerIdInput = document.getElementById('peer-id-input')!     as HTMLInputElement;
+  const joinBtn     = document.getElementById('join-btn')!          as HTMLButtonElement;
+  const joinListEl  = document.getElementById('player-list-join')!  as HTMLUListElement;
 
-  const playerView     = document.getElementById('player-view')!        as HTMLDivElement;
-  const roleTitle      = document.getElementById('role-title')!         as HTMLHeadingElement;
-  const wordDisplay    = document.getElementById('word-display')!       as HTMLParagraphElement;
-  const timerEl        = document.getElementById('timer')!              as HTMLDivElement;
-  const stopBtn        = document.getElementById('stop-btn')!           as HTMLButtonElement;
-  const gameListEl     = document.getElementById('player-list-game')!   as HTMLUListElement;
-  const restartBtn     = document.getElementById('restart-btn')!        as HTMLButtonElement;
+  const playerView  = document.getElementById('player-view')!       as HTMLDivElement;
+  const roleTitle   = document.getElementById('role-title')!        as HTMLHeadingElement;
+  const wordDisplay = document.getElementById('word-display')!      as HTMLParagraphElement;
+  const timerEl     = document.getElementById('timer')!             as HTMLDivElement;
+  const stopBtn     = document.getElementById('stop-btn')!          as HTMLButtonElement;
+  const gameListEl  = document.getElementById('player-list-game')!  as HTMLUListElement;
+  const restartBtn  = document.getElementById('restart-btn')!       as HTMLButtonElement;
 
-  // ─── Types & State ────────────────────────────────────────────────────
+  // ─── Types & State ────────────────────────────────────────────────
   type PlayerInfo       = { id: string; name: string; role: 'normal'|'undercover' };
   type PlayerConnection = { id: string; name: string; conn: DataConnection };
 
@@ -64,21 +79,20 @@ window.addEventListener('DOMContentLoaded', () => {
   let voteCounts: Record<string, number> = {};
   let votesCast: Set<string> = new Set();
   let votedTarget: string | null = null;
-  let timerInterval: number;
-  let remainingTime: number;
-  let currentPair: WordPair;
+  let timerInterval!: number;
+  let remainingTime = 0;
+  let currentPair!: WordPair;
   let myConn!: DataConnection;
 
-  // ─── PeerJS-Options ──────────────────────────────────────────────────
+  // ─── PeerJS-Options ────────────────────────────────────────────────
   const peerOptions = {
-  host:   location.hostname,
-  port:   location.port ? Number(location.port) : (location.protocol === 'https:' ? 443 : 80),
-  path:   '/peerjs',
-  secure: location.protocol === 'https:'
-};
+    host:   location.hostname,
+    port:   location.port ? Number(location.port) : (location.protocol === 'https:' ? 443 : 80),
+    path:   '/peerjs',
+    secure: location.protocol === 'https:'
+  };
 
-
-  // ─── Utils ────────────────────────────────────────────────────────────
+  // ─── Utils ──────────────────────────────────────────────────────────
   function renderList(el: HTMLUListElement, votePhase = false) {
     el.innerHTML = '';
     players.forEach(p => {
@@ -88,7 +102,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (eliminatedIds.includes(p.id)) li.classList.add('eliminated');
       if (votePhase && !eliminatedIds.includes(p.id) && p.id !== peer.id) {
         li.classList.add('votable');
-        li.onclick = () => vote(p.id);
+        li.addEventListener('click', () => vote(p.id));
       }
       if (p.id === votedTarget) li.classList.add('voted');
       el.appendChild(li);
@@ -100,7 +114,7 @@ window.addEventListener('DOMContentLoaded', () => {
     connections.forEach(({ conn }) => {
       if (conn.open) conn.send({
         type: 'player-list',
-        players: players.map(p => ({ id: p.id, name: p.name }))
+        players: players.map(({id,name}) => ({id,name}))
       });
     });
   }
@@ -109,7 +123,7 @@ window.addEventListener('DOMContentLoaded', () => {
     return wordPairs[Math.floor(Math.random() * wordPairs.length)];
   }
 
-  // ─── Round Logic ─────────────────────────────────────────────────────
+  // ─── Round Logic ────────────────────────────────────────────────────
   function startRound() {
     eliminatedIds = [];
     votesCast.clear();
@@ -131,7 +145,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (conn.open) conn.send({ type: 'start', players, pair: currentPair });
       });
 
-      // Host self-info
+      // Host self-info & start player
       myInfo = players.find(p => p.id === peer.id)!;
       const starter = players[Math.floor(Math.random() * players.length)].name;
       startPlayerEl.textContent = `Startspieler: ${starter}`;
@@ -148,9 +162,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // own role & word
     roleTitle.textContent  = `Du bist ${myInfo!.role==='undercover'?'UNDERCOVER':'normaler Spieler'}!`;
-    wordDisplay.textContent = `Dein Wort: ${ myInfo!.role==='undercover'
+    wordDisplay.textContent = `Dein Wort: ${myInfo!.role==='undercover'
       ? currentPair.undercover
-      : currentPair.common }`;
+      : currentPair.common}`;
 
     renderList(gameListEl);
 
@@ -167,19 +181,23 @@ window.addEventListener('DOMContentLoaded', () => {
       if (remainingTime <= 0 && isHost) {
         clearInterval(timerInterval);
         beginVote();
-        connections.forEach(({ conn }) => conn.send({ type: 'vote-start' }));
+        connections.forEach(({ conn }) => {
+          if (conn.open) conn.send({ type: 'vote-start' });
+        });
       }
     }, 1000);
   }
 
+  // Stop-Button
   stopBtn.addEventListener('click', () => {
-  if (!isHost) return;
-  clearInterval(timerInterval);
-  beginVote();
-  connections.forEach(({ conn }) => {
-    if (conn.open) conn.send({ type: 'vote-start' });
+    console.log('❗ Stop-Button geklickt, isHost=', isHost);
+    if (!isHost) return;
+    clearInterval(timerInterval);
+    beginVote();
+    connections.forEach(({ conn }) => {
+      if (conn.open) conn.send({ type: 'vote-start' });
+    });
   });
-});
 
   function beginVote() {
     clearInterval(timerInterval);
@@ -193,7 +211,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function recordVote(voterId: string, targetId: string) {
     if (votesCast.has(voterId)) return;
     votesCast.add(voterId);
-    voteCounts[targetId] = (voteCounts[targetId]||0) + 1;
+    voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
 
     if (votesCast.size >= players.length - eliminatedIds.length) {
       endVoting();
@@ -202,20 +220,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function endVoting() {
     clearInterval(timerInterval);
-    // tally …
     const max = Math.max(...Object.values(voteCounts));
-    const top = Object.entries(voteCounts).filter(([,v]) => v===max).map(([id])=>id);
+    const top = Object.entries(voteCounts).filter(([,v]) => v === max).map(([id])=>id);
     const elim = top[Math.floor(Math.random()*top.length)];
     eliminatedIds.push(elim);
 
-    const uc = players.find(p=>p.role==='undercover')!;
-    const out = players.find(p=>p.id===elim)!;
+    const uc = players.find(p => p.role === 'undercover')!;
     const survivors = players.length - eliminatedIds.length;
 
     let msg: string;
-    if (out.role==='undercover') {
+    if (players.find(p=>p.id===elim)!.role === 'undercover') {
       msg = `Die normalen Spieler haben gewonnen! Undercover war ${uc.name}.`;
-    } else if (survivors<=2) {
+    } else if (survivors <= 2) {
       msg = `Der Undercover hat gewonnen! Undercover war ${uc.name}.`;
     } else {
       renderList(gameListEl);
@@ -227,22 +243,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     showEnd(msg);
   }
-
-  function copyToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    return navigator.clipboard.writeText(text);
-  }
-  // Fallback für unsichere Kontexte
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position = 'absolute';
-  ta.style.left = '-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  document.execCommand('copy');
-  document.body.removeChild(ta);
-  return Promise.resolve();
-}
 
   function showEnd(msg: string) {
     roleTitle.textContent   = msg;
@@ -267,63 +267,66 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // ─── Onboarding & Init ───────────────────────────────────────────────
-  chooseHostBtn.onclick = () => {
+  chooseHostBtn.addEventListener('click', () => {
     isHost = true;
     stepRole.style.display = 'none';
     chosenRoleText.textContent = 'Du bist jetzt Host.';
     stepName.style.display = 'block';
-  };
-  chooseJoinBtn.onclick = () => {
+  });
+
+  chooseJoinBtn.addEventListener('click', () => {
     isHost = false;
     stepRole.style.display = 'none';
     chosenRoleText.textContent = 'Du trittst als Spieler bei.';
     stepName.style.display = 'block';
-  };
-  submitNameBtn.onclick = () => {
+  });
+
+  submitNameBtn.addEventListener('click', () => {
     myName = nameInput.value.trim();
     if (!myName) {
       alert('Bitte gib deinen Namen ein.');
       return;
     }
     stepName.style.display = 'none';
-    isHost ? initHost() : initJoiner();
-  };
+    if (isHost) initHost();
+    else initJoiner();
+  });
 
   function initHost() {
     peer = new Peer(undefined as any, peerOptions);
-    peer.on('open', (id) => {
-  hostIdSpan.textContent = id;
-  hostLobby.style.display = 'block';
+    peer.on('open', id => {
+      hostIdSpan.textContent = id;
+      hostLobby.style.display = 'block';
 
-  // ➡️ Hier der neue Code:
-  copyLinkBtn.disabled = false;
-  copyLinkBtn.onclick = () => {
-  const link = `${location.protocol}//${location.host}${location.pathname}?host=${peer.id}`;
-  copyToClipboard(link)
-    .then(() => {
-      copyLinkBtn.textContent = 'Link kopiert!';
-      setTimeout(() => copyLinkBtn.textContent = 'Einladungslink kopieren', 2000);
-    })
-    .catch(err => {
-      console.warn('Clipboard copying failed', err);
-      alert('Kopieren fehlgeschlagen. Bitte manuell markieren und kopieren.');
+      // Einladungslink
+      copyLinkBtn.disabled = false;
+      copyLinkBtn.addEventListener('click', () => {
+        const link = `${location.protocol}//${location.host}${location.pathname}?host=${id}`;
+        copyToClipboard(link)
+          .then(() => {
+            copyLinkBtn.textContent = 'Link kopiert!';
+            setTimeout(() => copyLinkBtn.textContent = 'Einladungslink kopieren', 2000);
+          })
+          .catch(err => {
+            console.warn('Clipboard failed', err);
+            alert('Kopieren fehlgeschlagen, bitte manuell kopieren.');
+          });
+      });
+
+      players = [{ id, name: myName, role: 'normal' }];
+      renderList(hostListEl);
     });
-};
-  // ⬅️ Ende neuer Code
-
-  players = [{ id, name: myName, role: 'normal' }];
-  renderList(hostListEl, false);
-});
 
     peer.on('connection', conn => {
       conn.on('open', () => conn.send({ type: 'request-intro' }));
       conn.on('data', data => {
-        if (isMessage(data) && data.type==='intro' && !connections.some(p=>p.id===conn.peer)) {
+        if (!isMessage(data)) return;
+        if (data.type === 'intro' && !connections.some(p=>p.id===conn.peer)) {
           connections.push({ id: conn.peer, name: data.name, conn });
           players.push({ id: conn.peer, name: data.name, role: 'normal' });
           broadcastPlayerList();
         }
-        if (isMessage(data) && data.type==='vote') {
+        if (data.type === 'vote') {
           recordVote(data.voterId, data.targetId);
         }
       });
@@ -334,8 +337,8 @@ window.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    startGameBtn.onclick = () => startRound();
-    restartBtn.onclick  = () => startRound();
+    startGameBtn.addEventListener('click', () => startRound());
+    restartBtn.addEventListener('click', () => startRound());
   }
 
   function initJoiner() {
@@ -347,21 +350,21 @@ window.addEventListener('DOMContentLoaded', () => {
       const doJoin = () => {
         const hostId = peerIdInput.value.trim();
         if (!hostId) return alert('Join-Code fehlt!');
-        if (hostId===ownId) return alert('Du darfst nicht dich selbst joinen.');
+        if (hostId === ownId) return alert('Du darfst nicht dich selbst joinen.');
         myConn = peer.connect(hostId);
-        myConn.on('open', ()=> myConn.send({ type:'intro', name:myName }));
+        myConn.on('open', () => myConn.send({ type: 'intro', name: myName }));
         myConn.on('data', raw => {
           if (!isMessage(raw)) return;
-          switch(raw.type) {
+          switch (raw.type) {
             case 'player-list':
-              players = (raw.players as any[]).map(p=>({ ...p, role:'normal' }));
+              players = (raw.players as any[]).map(p => ({ ...p, role: 'normal' }));
               renderList(joinListEl);
               break;
             case 'start':
-              players = raw.players as PlayerInfo[];
-              currentPair = raw.pair as WordPair;
-              myInfo = players.find(p=>p.id===peer.id)!;
-              eliminatedIds = []; votesCast.clear(); voteCounts = {}; votedTarget = null;
+              players      = raw.players as PlayerInfo[];
+              currentPair  = raw.pair as WordPair;
+              myInfo       = players.find(p=>p.id===peer.id)!;
+              eliminatedIds= []; votesCast.clear(); voteCounts={}; votedTarget=null;
               showGameScreen();
               break;
             case 'vote-start':
@@ -369,25 +372,24 @@ window.addEventListener('DOMContentLoaded', () => {
               break;
             case 'elimination':
               eliminatedIds.push(raw.targetId);
-              renderList(gameListEl,true);
+              renderList(gameListEl, true);
               break;
             case 'game-end':
               showEnd(raw.message);
               break;
           }
         });
-        myConn.on('close', ()=>{
+        myConn.on('close', () => {
           alert('Verbindung zum Host verloren.');
           window.location.reload();
         });
       };
 
-      // Auto-join if URL contains ?host=PEER_ID
       if (auto) {
         peerIdInput.value = auto;
         doJoin();
       }
-      joinBtn.onclick = doJoin;
+      joinBtn.addEventListener('click', doJoin);
     });
   }
 });

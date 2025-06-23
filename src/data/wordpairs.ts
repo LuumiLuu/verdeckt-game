@@ -38,5 +38,11 @@ export const wordPairs: WordPair[] = [
   { common: "Kletterwand", undercover: "Griff" },
   { common: "Wäscheleine", undercover: "Trocknen" },
   { common: "Mona Lisa", undercover: "Lächeln" },
-  { common: "Zeitschaltuhr", undercover: "Timer" }
+  { common: "Zeitschaltuhr", undercover: "Timer" },
+  { common: "Küche", undercover: "Kochen" },
+  { common: "StarWars", undercover: "Weltraum" },
+  { common: "Controller", undercover: "Knöpfe" },
+  { common: "Musikvideo", undercover: "Szenen" },
+  { common: "Haar", undercover: "Styling" },
+  { common: "Rundreise", undercover: "Stationen" }
 ];

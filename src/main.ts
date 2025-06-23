@@ -104,7 +104,8 @@ window.addEventListener('DOMContentLoaded', () => {
         li.classList.add('votable');
         li.addEventListener('click', () => vote(p.id));
       }
-      if (p.id === votedTarget) li.classList.add('voted');
+      //if (p.id === votedTarget) li.classList.add('voted');
+      if (votePhase && p.id === votedTarget) li.classList.add('voted'); //Haken nur während der Abstimmung
       el.appendChild(li);
     });
   }
@@ -246,17 +247,20 @@ window.addEventListener('DOMContentLoaded', () => {
 
     function endVoting() {
   clearInterval(timerInterval);
+
+  // Ermittele meistgewählten Spieler
   const max = Math.max(...Object.values(voteCounts));
-  const top = Object.entries(voteCounts).filter(([,v]) => v === max).map(([id])=>id);
-  const elim = top[Math.floor(Math.random()*top.length)];
+  const top = Object.entries(voteCounts).filter(([, v]) => v === max).map(([id]) => id);
+  const elim = top[Math.floor(Math.random() * top.length)];
   eliminatedIds.push(elim);
 
   const eliminatedPlayer = players.find(p => p.id === elim)!;
-  const uc = players.find(p => p.role === 'undercover')!;
+  const undercoverPlayer = players.find(p => p.role === 'undercover')!;
   const survivors = players.length - eliminatedIds.length;
 
+  // 🟥 Fall 1: Undercover wurde eliminiert → Spielende
   if (eliminatedPlayer.role === 'undercover') {
-    const msg = `Die normalen Spieler haben gewonnen! Undercover war ${uc.name}.`;
+    const msg = `Die normalen Spieler haben gewonnen! Undercover war ${undercoverPlayer.name}.`;
     connections.forEach(({ conn }) => {
       if (conn.open) conn.send({ type: 'game-end', message: msg });
     });
@@ -264,8 +268,9 @@ window.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
+  // 🟥 Fall 2: Nur noch 2 Spieler → Undercover gewinnt
   if (survivors <= 2) {
-    const msg = `Der Undercover hat gewonnen! Undercover war ${uc.name}.`;
+    const msg = `Der Undercover hat gewonnen! Undercover war ${undercoverPlayer.name}.`;
     connections.forEach(({ conn }) => {
       if (conn.open) conn.send({ type: 'game-end', message: msg });
     });
@@ -273,16 +278,19 @@ window.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ➕ NEU: Falls normaler Spieler eliminiert → Runde geht weiter
-  renderList(gameListEl);
+  // 🟨 Fall 3: Normaler Spieler eliminiert → Spiel geht weiter
   votedTarget = null;
   votesCast.clear();
   voteCounts = {};
+  renderList(gameListEl); // Aktualisiere Spieler-UI
 
-  // Timer neu starten
+  // Informiere Clients über Eliminierung
+  connections.forEach(({ conn }) => {
+    if (conn.open) conn.send({ type: 'elimination', targetId: elim });
+  });
+
+  // ⏱️ Timer mit alter Restzeit weiterlaufen lassen
   if (isHost) {
-    remainingTime = players.length * 60;
-    timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
     stopBtn.style.display = 'block';
     timerInterval = window.setInterval(() => {
       remainingTime--;
@@ -296,12 +304,8 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     }, 1000);
   }
-
-  // Broadcast neue Eliminierung an Clients
-  connections.forEach(({ conn }) => {
-    if (conn.open) conn.send({ type: 'elimination', targetId: elim });
-  });
 }
+
 
 
   function showEnd(msg: string) {
@@ -314,7 +318,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function vote(targetId: string) {
-    if (votesCast.has(peer.id)) return;
+    if (votesCast.has(peer.id) || eliminatedIds.includes(peer.id)) return;
     votesCast.add(peer.id);
     votedTarget = targetId;
     renderList(gameListEl, true);

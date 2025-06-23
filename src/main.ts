@@ -172,15 +172,14 @@ window.addEventListener('DOMContentLoaded', () => {
     }, 1000);
   }
 
-  stopBtn.onclick = () => {
-  if (!isHost) return;           // nur der Host darf stoppen
-  clearInterval(timerInterval);   // laufenden Timer anhalten
-  beginVote();                    // Voting-Phase starten
-  // und allen Clients Bescheid sagen
+  stopBtn.addEventListener('click', () => {
+  if (!isHost) return;
+  clearInterval(timerInterval);
+  beginVote();
   connections.forEach(({ conn }) => {
     if (conn.open) conn.send({ type: 'vote-start' });
   });
-};
+});
 
   function beginVote() {
     clearInterval(timerInterval);
@@ -233,9 +232,11 @@ window.addEventListener('DOMContentLoaded', () => {
   if (navigator.clipboard?.writeText) {
     return navigator.clipboard.writeText(text);
   }
-  // Fallback für HTTP
+  // Fallback für unsichere Kontexte
   const ta = document.createElement('textarea');
   ta.value = text;
+  ta.style.position = 'absolute';
+  ta.style.left = '-9999px';
   document.body.appendChild(ta);
   ta.select();
   document.execCommand('copy');
@@ -297,11 +298,16 @@ window.addEventListener('DOMContentLoaded', () => {
   // ➡️ Hier der neue Code:
   copyLinkBtn.disabled = false;
   copyLinkBtn.onclick = () => {
-  const link = `${location.protocol}//${location.host}${location.pathname}?host=${id}`;
-  copyToClipboard(link).then(() => {
-    copyLinkBtn.textContent = 'Link kopiert!';
-    setTimeout(() => copyLinkBtn.textContent = 'Einladungslink kopieren', 2000);
-  });
+  const link = `${location.protocol}//${location.host}${location.pathname}?host=${peer.id}`;
+  copyToClipboard(link)
+    .then(() => {
+      copyLinkBtn.textContent = 'Link kopiert!';
+      setTimeout(() => copyLinkBtn.textContent = 'Einladungslink kopieren', 2000);
+    })
+    .catch(err => {
+      console.warn('Clipboard copying failed', err);
+      alert('Kopieren fehlgeschlagen. Bitte manuell markieren und kopieren.');
+    });
 };
   // ⬅️ Ende neuer Code
 

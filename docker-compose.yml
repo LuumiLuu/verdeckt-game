@@ -13,5 +13,3 @@ services:
     image: peerjs/peerjs-server
     command: peerjs --port 9000 --path /peerjs
     # expose statt ports, weil wir ausschließlich über Nginx proxyen
-    expose:
-      - "9000"

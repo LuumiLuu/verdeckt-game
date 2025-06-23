@@ -1,12 +1,6 @@
 version: '3.8'
 services:
-  web:
-    build: .
-    ports:
-      - "80:80"
-      - "443:443"
-
   peerjs:
     image: peerjs/peerjs-server
-    command: peerjs --port 9000 --key peerjs --path /peerjs
-    # no published ports needed—Nginx will proxy /peerjs to this container
+    command: peerjs --port 9000 --path /peerjs
+    # no ports: section needed if you only proxy via Nginx

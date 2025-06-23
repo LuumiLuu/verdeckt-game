@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Undercover Multiplayer</title>
+    <style>
+      body {
+        background: #f5f5f5;
+        font-family: Arial, sans-serif;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+      h1, h2, h3 { text-align: center; margin: 10px 0; }
+      .box {
+        max-width: 480px;
+        margin: 20px auto;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        background: #fff;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border: none;
+        border-radius: 4px;
+        background: #1976d2;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      input[type="text"] {
+        width: calc(100% - 22px);
+        padding: 8px 10px;
+        margin: 8px 0;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+      }
+      ul { list-style: none; padding: 0; margin: 8px 0; }
+      ul li {
+        background: #e3f2fd;
+        margin: 4px 0;
+        padding: 6px 10px;
+        border-radius: 4px;
+      }
+      ul li.eliminated { opacity: 0.5; }
+      ul li.votable { cursor: pointer; background: #bbdefb; }
+      #timer { font-size: 1.2rem; text-align: center; margin: 10px 0; }
+      #stop-btn { background: #d32f2f; }
+      #start-player-display {
+        font-weight: bold;
+        text-align: center;
+        margin-top: 12px;
+      }
+      ul li.voted::after {
+    content: ' ✓';
+    color: #388e3c;
+    font-weight: bold;
+    margin-left: 8px;
+  }
+    </style>
+  </head>
+  <body>
+    <h1>Undercover Multiplayer</h1>
+
+    <!-- Schritt 1: Rolle wählen -->
+    <div id="step-role" class="box">
+      <button id="choose-host">Ich möchte Host sein</button>
+      <button id="choose-join">Ich möchte Spieler sein</button>
+    </div>
+
+    <!-- Schritt 2: Namen eingeben -->
+    <div id="step-name" class="box" style="display: none;">
+      <p id="chosen-role-text"></p>
+      <input type="text" id="player-name-input" placeholder="Dein Name" autocomplete="off" />
+      <button id="submit-name">Weiter</button>
+    </div>
+
+    <!-- Host-Lobby -->
+    <div id="host-lobby" style="display: none;">
+  <p>
+    <strong>Deine Peer-ID:</strong>
+    <span id="host-peer-id">–</span>
+  </p>
+
+  <!-- Neu: Einladungs-Link kopieren -->
+  <button id="copy-link-btn" disabled>Einladungslink kopieren</button>
+
+  <h3>Spieler in Lobby:</h3>
+  <ul id="player-list-host"></ul>
+  <button id="start-game-btn">Spiel starten</button>
+</div>
+
+
+    <!-- Joiner-Lobby -->
+    <div id="join-lobby" class="box" style="display: none;">
+      <p>Gib hier den Join-Code ein:</p>
+      <input type="text" id="peer-id-input" placeholder="Host-Code" autocomplete="off" />
+      <button id="join-btn">Verbinden</button>
+      <h3>Spieler in der Lobby:</h3>
+      <ul id="player-list-join"></ul>
+    </div>
+
+    <!-- Game-Screen -->
+    <div id="player-view" class="box" style="display: none;">
+      <h2 id="role-title"></h2>
+      <p id="word-display"></p>
+      <div id="timer">Zeit: 00:00</div>
+      <button id="stop-btn" style="display: none;">Stop</button>
+      <button id="restart-btn" style="display:none;">Neues Spiel starten</button>
+      <h3>Spieler:</h3>
+      <ul id="player-list-game"></ul>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

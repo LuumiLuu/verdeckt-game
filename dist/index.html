@@ -61,7 +61,7 @@
     margin-left: 8px;
   }
     </style>
-    <script type="module" crossorigin src="/assets/index-D057UId1.js"></script>
+    <script type="module" crossorigin src="/assets/index-BwwL9bi6.js"></script>
   </head>
   <body>
     <h1>Undercover Multiplayer</h1>
@@ -80,13 +80,20 @@
     </div>
 
     <!-- Host-Lobby -->
-    <div id="host-lobby" class="box" style="display: none;">
-      <p><strong>Join-Code:</strong> <span id="host-peer-id">–</span></p>
-      <h3>Spieler in der Lobby:</h3>
-      <ul id="player-list-host"></ul>
-      <button id="start-game-btn">Spiel starten</button>
-      <p id="start-player-display">Startspieler: –</p>
-    </div>
+    <div id="host-lobby" style="display: none;">
+  <p>
+    <strong>Deine Peer-ID:</strong>
+    <span id="host-peer-id">–</span>
+  </p>
+
+  <!-- Neu: Einladungs-Link kopieren -->
+  <button id="copy-link-btn" disabled>Einladungslink kopieren</button>
+
+  <h3>Spieler in Lobby:</h3>
+  <ul id="player-list-host"></ul>
+  <button id="start-game-btn">Spiel starten</button>
+</div>
+
 
     <!-- Joiner-Lobby -->
     <div id="join-lobby" class="box" style="display: none;">

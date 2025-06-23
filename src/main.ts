@@ -218,7 +218,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function endVoting() {
+  /*function endVoting() {
     clearInterval(timerInterval);
     const max = Math.max(...Object.values(voteCounts));
     const top = Object.entries(voteCounts).filter(([,v]) => v === max).map(([id])=>id);
@@ -242,7 +242,67 @@ window.addEventListener('DOMContentLoaded', () => {
       if (conn.open) conn.send({ type: 'game-end', message: msg });
     });
     showEnd(msg);
+  }*/
+
+    function endVoting() {
+  clearInterval(timerInterval);
+  const max = Math.max(...Object.values(voteCounts));
+  const top = Object.entries(voteCounts).filter(([,v]) => v === max).map(([id])=>id);
+  const elim = top[Math.floor(Math.random()*top.length)];
+  eliminatedIds.push(elim);
+
+  const eliminatedPlayer = players.find(p => p.id === elim)!;
+  const uc = players.find(p => p.role === 'undercover')!;
+  const survivors = players.length - eliminatedIds.length;
+
+  if (eliminatedPlayer.role === 'undercover') {
+    const msg = `Die normalen Spieler haben gewonnen! Undercover war ${uc.name}.`;
+    connections.forEach(({ conn }) => {
+      if (conn.open) conn.send({ type: 'game-end', message: msg });
+    });
+    showEnd(msg);
+    return;
   }
+
+  if (survivors <= 2) {
+    const msg = `Der Undercover hat gewonnen! Undercover war ${uc.name}.`;
+    connections.forEach(({ conn }) => {
+      if (conn.open) conn.send({ type: 'game-end', message: msg });
+    });
+    showEnd(msg);
+    return;
+  }
+
+  // ➕ NEU: Falls normaler Spieler eliminiert → Runde geht weiter
+  renderList(gameListEl);
+  votedTarget = null;
+  votesCast.clear();
+  voteCounts = {};
+
+  // Timer neu starten
+  if (isHost) {
+    remainingTime = players.length * 60;
+    timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
+    stopBtn.style.display = 'block';
+    timerInterval = window.setInterval(() => {
+      remainingTime--;
+      timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
+      if (remainingTime <= 0) {
+        clearInterval(timerInterval);
+        beginVote();
+        connections.forEach(({ conn }) => {
+          if (conn.open) conn.send({ type: 'vote-start' });
+        });
+      }
+    }, 1000);
+  }
+
+  // Broadcast neue Eliminierung an Clients
+  connections.forEach(({ conn }) => {
+    if (conn.open) conn.send({ type: 'elimination', targetId: elim });
+  });
+}
+
 
   function showEnd(msg: string) {
     roleTitle.textContent   = msg;
@@ -338,7 +398,10 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     startGameBtn.addEventListener('click', () => startRound());
-    restartBtn.addEventListener('click', () => startRound());
+    restartBtn.addEventListener('click', () => {
+    restartBtn.style.display = 'none'; // Button ausblenden
+    startRound();                      // Spiel starten
+  });;
   }
 
   function initJoiner() {

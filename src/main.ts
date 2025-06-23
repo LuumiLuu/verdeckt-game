@@ -397,11 +397,17 @@ window.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    startGameBtn.addEventListener('click', () => startRound());
+    startGameBtn.addEventListener('click', () => {
+      if (players.length < 3) {
+        alert('Das Spiel kann erst gestartet werden, wenn mindestens 3 Spieler in der Lobby sind.');
+        return;
+      }
+      startRound();
+    });
     restartBtn.addEventListener('click', () => {
-    restartBtn.style.display = 'none'; // Button ausblenden
-    startRound();                      // Spiel starten
-  });;
+      restartBtn.style.display = 'none'; // Button ausblenden
+      startRound();                      // Spiel starten
+    });;
   }
 
   function initJoiner() {

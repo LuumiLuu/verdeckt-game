@@ -1,18 +1,11 @@
 version: '3.8'
-
 services:
   web:
-    image: nginx:alpine
-    volumes:
-      # Relativ zum Repo-Root, wo Portainer klont:
-      - ./dist:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    build: .
     ports:
       - "80:80"
       - "443:443"
-
   peerjs:
     image: peerjs/peerjs-server
     environment:
       - KEY=peerjs
-    # kein direkter Port-Mount nötig, Nginx proxyt /peerjs

@@ -172,6 +172,16 @@ window.addEventListener('DOMContentLoaded', () => {
     }, 1000);
   }
 
+  stopBtn.onclick = () => {
+  if (!isHost) return;           // nur der Host darf stoppen
+  clearInterval(timerInterval);   // laufenden Timer anhalten
+  beginVote();                    // Voting-Phase starten
+  // und allen Clients Bescheid sagen
+  connections.forEach(({ conn }) => {
+    if (conn.open) conn.send({ type: 'vote-start' });
+  });
+};
+
   function beginVote() {
     clearInterval(timerInterval);
     votesCast.clear();

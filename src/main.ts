@@ -75,7 +75,7 @@ window.addEventListener('DOMContentLoaded', () => {
     //port:     9000,
     path:     '/peerjs',
     secure:   location.protocol === 'https:',
-    key:      'peerjs'
+    //key:      'peerjs'
   };
 
   // ─── Utils ────────────────────────────────────────────────────────────

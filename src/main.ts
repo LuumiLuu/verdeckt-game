@@ -72,7 +72,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // ─── PeerJS-Options ──────────────────────────────────────────────────
   const peerOptions = {
     host:     location.hostname,
-    port:     9000,
+    //port:     9000,
     path:     '/peerjs',
     secure:   location.protocol === 'https:',
     key:      'peerjs'

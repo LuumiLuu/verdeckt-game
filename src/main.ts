@@ -71,12 +71,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // ─── PeerJS-Options ──────────────────────────────────────────────────
   const peerOptions = {
-    host:     location.hostname,
-    //port:     9000,
-    path:     '/peerjs',
-    secure:   location.protocol === 'https:',
-    //key:      'peerjs'
-  };
+  host:   location.hostname,
+  port:   location.port ? Number(location.port) : (location.protocol === 'https:' ? 443 : 80),
+  path:   '/peerjs',
+  secure: location.protocol === 'https:'
+};
+
 
   // ─── Utils ────────────────────────────────────────────────────────────
   function renderList(el: HTMLUListElement, votePhase = false) {

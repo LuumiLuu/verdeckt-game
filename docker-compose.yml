@@ -1,10 +1,12 @@
 version: '3.8'
+
 services:
   web:
     image: nginx:alpine
     volumes:
-      - /opt/undercover/dist:/usr/share/nginx/html:ro
-      - /opt/undercover/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Relativ zum Repo-Root, wo Portainer klont:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
       - "80:80"
       - "443:443"
@@ -13,4 +15,4 @@ services:
     image: peerjs/peerjs-server
     environment:
       - KEY=peerjs
-    # → entferne hier den "9000:9000", wenn Du PeerJS nur via Nginx-Proxy erreichen willst
+    # kein direkter Port-Mount nötig, Nginx proxyt /peerjs

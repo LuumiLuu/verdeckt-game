@@ -219,6 +219,20 @@ window.addEventListener('DOMContentLoaded', () => {
     showEnd(msg);
   }
 
+  function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  // Fallback für HTTP
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  return Promise.resolve();
+}
+
   function showEnd(msg: string) {
     roleTitle.textContent   = msg;
     wordDisplay.textContent = '';
@@ -273,14 +287,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // ➡️ Hier der neue Code:
   copyLinkBtn.disabled = false;
   copyLinkBtn.onclick = () => {
-    const link = `${location.protocol}//${location.host}${location.pathname}?host=${id}`;
-    navigator.clipboard.writeText(link).then(() => {
-      copyLinkBtn.textContent = 'Link kopiert!';
-      setTimeout(() => {
-        copyLinkBtn.textContent = 'Einladungslink kopieren';
-      }, 2000);
-    });
-  };
+  const link = `${location.protocol}//${location.host}${location.pathname}?host=${id}`;
+  copyToClipboard(link).then(() => {
+    copyLinkBtn.textContent = 'Link kopiert!';
+    setTimeout(() => copyLinkBtn.textContent = 'Einladungslink kopieren', 2000);
+  });
+};
   // ⬅️ Ende neuer Code
 
   players = [{ id, name: myName, role: 'normal' }];

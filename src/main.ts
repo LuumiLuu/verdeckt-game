@@ -170,7 +170,7 @@ window.addEventListener('DOMContentLoaded', () => {
     renderList(gameListEl);
 
     // timer
-    remainingTime = players.length * 60;
+    remainingTime = players.length * 80; //hier Zeit ändern
     clearInterval(timerInterval);
     timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
     timerEl.style.display = '';
@@ -219,32 +219,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /*function endVoting() {
-    clearInterval(timerInterval);
-    const max = Math.max(...Object.values(voteCounts));
-    const top = Object.entries(voteCounts).filter(([,v]) => v === max).map(([id])=>id);
-    const elim = top[Math.floor(Math.random()*top.length)];
-    eliminatedIds.push(elim);
-
-    const uc = players.find(p => p.role === 'undercover')!;
-    const survivors = players.length - eliminatedIds.length;
-
-    let msg: string;
-    if (players.find(p=>p.id===elim)!.role === 'undercover') {
-      msg = `Die normalen Spieler haben gewonnen! Undercover war ${uc.name}.`;
-    } else if (survivors <= 2) {
-      msg = `Der Undercover hat gewonnen! Undercover war ${uc.name}.`;
-    } else {
-      renderList(gameListEl);
-      return;
-    }
-
-    connections.forEach(({ conn }) => {
-      if (conn.open) conn.send({ type: 'game-end', message: msg });
-    });
-    showEnd(msg);
-  }*/
-
+/*
     function endVoting() {
   clearInterval(timerInterval);
 
@@ -304,7 +279,69 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     }, 1000);
   }
+}*/
+
+function endVoting() {
+  clearInterval(timerInterval);
+
+  const max = Math.max(...Object.values(voteCounts));
+  const top = Object.entries(voteCounts).filter(([, v]) => v === max).map(([id]) => id);
+  const elim = top[Math.floor(Math.random() * top.length)];
+  eliminatedIds.push(elim);
+
+  const eliminatedPlayer = players.find(p => p.id === elim)!;
+  const undercoverPlayer = players.find(p => p.role === 'undercover')!;
+  const survivors = players.length - eliminatedIds.length;
+
+  if (eliminatedPlayer.role === 'undercover') {
+    const msg = `Die normalen Spieler haben gewonnen! Undercover war ${undercoverPlayer.name}.`;
+    connections.forEach(({ conn }) => {
+      if (conn.open) conn.send({ type: 'game-end', message: msg });
+    });
+    showEnd(msg);
+    return;
+  }
+
+  if (survivors <= 2) {
+    const msg = `Der Undercover hat gewonnen! Undercover war ${undercoverPlayer.name}.`;
+    connections.forEach(({ conn }) => {
+      if (conn.open) conn.send({ type: 'game-end', message: msg });
+    });
+    showEnd(msg);
+    return;
+  }
+
+  votedTarget = null;
+  votesCast.clear();
+  voteCounts = {};
+  renderList(gameListEl);
+
+  connections.forEach(({ conn }) => {
+    if (conn.open) {
+      conn.send({ type: 'elimination', targetId: elim });
+      conn.send({ type: 'resume-timer', time: remainingTime });  // <--- NEU!
+    }
+  });
+
+  if (isHost) {
+    stopBtn.style.display = 'block';
+    timerEl.style.display = '';
+    timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
+    clearInterval(timerInterval);
+    timerInterval = window.setInterval(() => {
+      remainingTime--;
+      timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
+      if (remainingTime <= 0) {
+        clearInterval(timerInterval);
+        beginVote();
+        connections.forEach(({ conn }) => {
+          if (conn.open) conn.send({ type: 'vote-start' });
+        });
+      }
+    }, 1000);
+  }
 }
+
 
 
 
@@ -449,6 +486,20 @@ window.addEventListener('DOMContentLoaded', () => {
               break;
             case 'game-end':
               showEnd(raw.message);
+              break;
+            case 'resume-timer':
+              remainingTime = raw.time;
+              timerEl.style.display = '';
+              stopBtn.style.display = 'none';
+              timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
+              clearInterval(timerInterval);
+              timerInterval = window.setInterval(() => {
+                remainingTime--;
+                timerEl.textContent = `Zeit: ${formatTime(remainingTime)}`;
+                if (remainingTime <= 0) {
+                  clearInterval(timerInterval);
+                }
+              }, 1000);
               break;
           }
         });
